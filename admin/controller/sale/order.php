@@ -1861,26 +1861,53 @@ class ControllerSaleOrder extends Controller {
 	}
 // CIS
 public function apiAuthentication(){
+	
+			$test_apiAuthUrl = 'https://sandbox-auth.myparcel.com';
+			$test_apiUrl = 'https://sandbox-api.myparcel.com';
+			
+			$apiAuthUrl = 'https://auth.myparcel.com';
+			$apiUrl = 'https://api.myparcel.com';
+			
+			$test_mode = $apiUrl = $this->config->get('shipping_my_parcel_mode');
+			$clientKey = $this->config->get('shipping_my_parcel_api_client_key');
+			$clientSecretKey = $this->config->get('shipping_my_parcel_api_secret_key');
 
-        $apiUrl = $this->config->get('shipping_my_parcel_api_url');
-        $apiAuthUrl = $this->config->get('shipping_my_parcel_api_auth_url');
-        $clientKey = $this->config->get('shipping_my_parcel_api_client_key');
-        $clientSecretKey = $this->config->get('shipping_my_parcel_api_secret_key');
+        //$apiUrl = $this->config->get('shipping_my_parcel_api_url');
+        //$apiAuthUrl = $this->config->get('shipping_my_parcel_api_auth_url');
+        
         if(!empty($apiUrl) && !empty($apiAuthUrl) && !empty($clientKey) && !empty($clientSecretKey)) {
-		$api = \MyParcelCom\ApiSdk\MyParcelComApi::createSingleton(
-              new \MyParcelCom\ApiSdk\Authentication\ClientCredentials(
-                  $clientKey,
-                  $clientSecretKey,
-                  $apiAuthUrl
-              ),
-              $apiUrl
-          );
-
-          // The singleton instance can now be retrieved anywhere.
+			if($test_mode){
+				$api = \MyParcelCom\ApiSdk\MyParcelComApi::createSingleton(
+					  new \MyParcelCom\ApiSdk\Authentication\ClientCredentials(
+						  $clientKey,
+						  $clientSecretKey,
+						  $test_apiAuthUrl
+					  ),
+					  $test_apiUrl
+				  );
+				   // The singleton instance can now be retrieved anywhere.
           $api = \MyParcelCom\ApiSdk\MyParcelComApi::getSingleton();
          
           return $api; 
-      }
+			
+			}else{
+				$api = \MyParcelCom\ApiSdk\MyParcelComApi::createSingleton(
+					  new \MyParcelCom\ApiSdk\Authentication\ClientCredentials(
+						  $clientKey,
+						  $clientSecretKey,
+						  $apiAuthUrl
+					  ),
+					  $apiUrl
+				  );
+				   // The singleton instance can now be retrieved anywhere.
+          $api = \MyParcelCom\ApiSdk\MyParcelComApi::getSingleton();
+         
+          return $api; 
+		}
+         
+      }else{
+		return false; 
+	  }
 
         // if(!empty($apiUrl) && !empty($apiAuthUrl) && !empty($clientKey) && !empty($clientSecretKey)) {
         //     $api = new \MyParcelCom\ApiSdk\MyParcelComApi($apiUrl);
@@ -1895,19 +1922,25 @@ public function apiAuthentication(){
         // }
    }
 function export(){
+$currency = $this->config->get('config_currency');
 	$orders = array();
 	$msg = '';
-	$config_ship = $this->config->get('shipping_my_parcel_shipment');
-	
+	$config_ship = 0;
+	//$config_ship = $this->config->get('shipping_my_parcel_shipment');	
 	$this->load->model('sale/order');
 	$this->load->model('catalog/product');
-    $api        = $this->apiAuthentication();
+    $api    = $this->apiAuthentication();
+	if($api){}else{
+		 $this->session->data['success'] = 'Please Check the Myparcel Module configuration!';
+$this->response->redirect($this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'], true));
+	}
     $mpCarrier  = new \MyParcelCom\ApiSdk\Resources\Carrier();
     $mpShop     = new \MyParcelCom\ApiSdk\Resources\Shop();
 	 
 	
   	$orders = $this->request->post['selected'];
   	if(!empty($orders)){
+	      
 	  	foreach ($orders as $order_id) {
 		 $items = $this->model_sale_order->getOrderProducts($order_id);		
 		 $order_info = $this->model_sale_order->getOrder($order_id);
@@ -1920,38 +1953,78 @@ function export(){
 		 $i = 0;
 		 $cnt = count($items);
 		 $chk_qun = 0;
-	    foreach($items as $item) { 
+		 $shipAddItem = array();
+	    foreach($items as $item) {
+		  $items1 = new \MyParcelCom\ApiSdk\Resources\ShipmentItem();
 	    	$ship_info = $this->model_sale_order->get_myparcel_shipment($order_id,$item['product_id']);
 	    	$chk_qun = $ship_info['squntity'];
 	    	$product_info = $this->model_catalog_product->getProduct($item['product_id']);
 	        $product 		= $item['product_id']; 
-	        $quantity       = $item['quantity'];    
-	        $squantity      = $item['shipped_product']; // get quantity
+	        $quantity       = $item['quantity']; 
+	        if($item['shipped_product']>0 && $ship_info['ship_id']!=0 && $ship_info['ship_id']!=''){
+ 				$squantity      = $item['shipped_product'];
+	         } else{
+			   $squantity      = $item['quantity']; // get quantity
+	         }
+	        
 	      	$product_weight = $product_info['weight']; // get the product weight 
 	      	$total_weight 	+= floatval($product_weight * $squantity);
 	        $weight += floatval($product_weight * $quantity);	     
-	        if($config_ship==0 && ($chk_qun>=$quantity || $chk_qun == $squantity)){
+	        if($config_ship==0 && ($chk_qun>=$quantity || $chk_qun == $squantity) && $ship_info['ship_id']!='' && $ship_info['ship_id']!=0){
 	        $total_weight 	-= floatval($product_weight * $squantity);
 	        $weight -= floatval($product_weight * $quantity);
 	        $i++;
 			continue;
 	        }
 	        else{
-	        if($config_ship==0){
+	        if($config_ship==0 && $ship_info['ship_id']!=0 && $ship_info['ship_id']!=''){
 	        $total_weight = $total_weight-floatval($product_weight * $chk_qun);
 	        }
   		    if($total_weight > $weight || $squantity==0 || $weight==0  || $total_weight==0) {
 			continue;
   		    }else{
 
-				if($ship_info['ship_id']!=''){	
+				if($ship_info['ship_id']!='' && $ship_info['ship_id']!=0){	
 				$update = array('order_id' => $order_id,'product_id' => $item['product_id'],'quantity' => $quantity,'shipped_quantity' => $squantity,'shipped_weight' => floatval($product_weight * $squantity), 'total_weight' => floatval($product_weight * $quantity),'ship_id' => $ship_info['ship_id']);
-				$this->model_sale_order->myparcel_shipinfo_update($update);					
+				$this->model_sale_order->myparcel_shipinfo_update($update);									
 			     }else{
 			    $insert = array('order_id' => $order_id,'product_id' => $item['product_id'],'quantity' => $quantity,'shipped_quantity' => $squantity,'shipped_weight' => floatval($product_weight * $squantity), 'total_weight' => floatval($product_weight * $quantity),'ship_id' => 0);
 				$this->model_sale_order->myparcel_shipment($insert);
-
 			     }
+			     $update_order = array('order_id' => $order_id,'product_id' => $item['product_id'],'shipped_quantity' => $squantity);
+			     $this->model_sale_order->myparcel_orderinfo_update($update_order);
+			   
+			   
+			   // Added on 10 june
+			   
+			    // Create the shipment and set required parameters.				
+				$eu_countrycodes = array('AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'GB', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK');
+				 $item_description = $item['name'];
+				 $item_sku = $product_info['sku'];
+				 if($item_sku==''){
+					$item_sku = 'NA';
+				 }
+				 $item_weight = $product_info['weight'];
+				 $item_value = $item['price']*100;
+				 $item_quantity = $squantity;
+				if(in_array($order_info['shipping_iso_code_2'], $eu_countrycodes)){
+			$items1
+                ->setDescription($item_description)
+                ->setQuantity($item_quantity);
+					
+				}else{
+			$items1
+                ->setSku($item_sku)
+                ->setDescription($item_description)
+                ->setQuantity($item_quantity)
+                ->setItemValue($item_value)
+                ->setCurrency($currency);
+				}
+			   $shipAddItem[] = $items1;
+			   // Added on 10 june
+			   
+			   
+			     
 	        }
 
 			}  	
@@ -1963,7 +2036,7 @@ function export(){
 		$msg = 'Order with OrderId '.$order_id.' is already exported!<br>';
 		continue;
 		}
-
+		
   		if($total_weight > $weight || $squantity==0 || $weight==0 || $total_weight==0) {
 			$msg .= 'Order with OrderId '.$order_id.' has not been exported because exported quantity either 0 Or greater then the order product quantity!<br>';
 			continue;
@@ -1977,27 +2050,45 @@ function export(){
 			    $order_shipping_postcode    = $order_info['shipping_postcode'];
 			    $order_billing_email        = $order_info['email'];
 				$country_code				= $order_info['shipping_iso_code_2'];
-			    $recipient = new \MyParcelCom\ApiSdk\Resources\Address();    
-			    $recipient
-			        ->setStreet1($order_shipping_address_1)
-			        ->setStreetNumber(221)
-			        ->setCity($order_shipping_city)
-			        ->setPostalCode($order_shipping_postcode)
-			        ->setFirstName($order_shipping_first_name)
-			        ->setLastName($order_shipping_last_name)
-			        ->setCountryCode($country_code)
-			        ->setRegionCode('ENG')
-			        ->setEmail($order_billing_email);
-
-
-			    // Create the shipment and set required parameters.
+			    $recipient = new \MyParcelCom\ApiSdk\Resources\Address();
+				
+				
+					if('GB' == $country_code){
+					$recipient
+						->setStreet1($order_shipping_address_1)
+						->setStreetNumber(221)
+						->setCity($order_shipping_city)
+						->setPostalCode($order_shipping_postcode)
+						->setFirstName($order_shipping_first_name)
+						->setLastName($order_shipping_last_name)
+						->setCountryCode($country_code)
+						->setRegionCode('ENG')
+						->setEmail($order_billing_email);
+					
+					}else{
+					$recipient
+						->setStreet1($order_shipping_address_1)
+						->setStreetNumber(221)
+						->setCity($order_shipping_city)
+						->setPostalCode($order_shipping_postcode)
+						->setFirstName($order_shipping_first_name)
+						->setLastName($order_shipping_last_name)
+						->setCountryCode($country_code)
+						->setEmail($order_billing_email);   
+					}
+					
+			   				
 				$shipment = new \MyParcelCom\ApiSdk\Resources\Shipment();
+				
 				$physicalPropertiesInterface = \MyParcelCom\ApiSdk\Resources\Interfaces\PhysicalPropertiesInterface::WEIGHT_GRAM;
 				$shipment
 				    ->setRecipientAddress($recipient)
-				    ->setWeight($total_weight*1000, $physicalPropertiesInterface);
+				    ->setWeight($total_weight*1000, $physicalPropertiesInterface)
+					->setItems($shipAddItem);
 
 			    // Have the SDK determine the cheapest service and post the shipment to the MyParcel.com API.
+				//$services = $api->getServices($shipment);
+				//$shipment->setService($service);
 			    $createdShipment    = $api->createShipment($shipment);
 			    $shipmentId         = $createdShipment->getId();    
 

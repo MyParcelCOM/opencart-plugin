@@ -27,6 +27,7 @@ class ControllerExtensionShippingMyParcel extends Controller {
     $data['entry_api_client_key'] = $this->language->get('entry_api_client_key');
     $data['entry_api_secret_key'] = $this->language->get('entry_api_secret_key');
     $data['entry_api_shipment'] = $this->language->get('entry_api_shipment');
+		 $data['entry_api_mode'] = $this->language->get('entry_api_mode');
 
  
     $data['button_save'] = $this->language->get('button_save');
@@ -82,18 +83,18 @@ class ControllerExtensionShippingMyParcel extends Controller {
     } else {
       $data['shipping_my_parcel_status'] = $this->config->get('shipping_my_parcel_status');
     }
-
-    if (isset($this->request->post['shipping_my_parcel_api_url'])) {
-      $data['shipping_my_parcel_api_url'] = $this->request->post['shipping_my_parcel_api_url'];
-    } else {
-      $data['shipping_my_parcel_api_url'] = $this->config->get('shipping_my_parcel_api_url');
-    }    
-
-    if (isset($this->request->post['shipping_my_parcel_api_auth_url'])) {
-      $data['shipping_my_parcel_api_auth_url'] = $this->request->post['shipping_my_parcel_api_auth_url'];
-    } else {
-      $data['shipping_my_parcel_api_auth_url'] = $this->config->get('shipping_my_parcel_api_auth_url');
-    }
+    //
+    //if (isset($this->request->post['shipping_my_parcel_api_url'])) {
+    //  $data['shipping_my_parcel_api_url'] = $this->request->post['shipping_my_parcel_api_url'];
+    //} else {
+    //  $data['shipping_my_parcel_api_url'] = $this->config->get('shipping_my_parcel_api_url');
+    //}    
+    //
+    //if (isset($this->request->post['shipping_my_parcel_api_auth_url'])) {
+    //  $data['shipping_my_parcel_api_auth_url'] = $this->request->post['shipping_my_parcel_api_auth_url'];
+    //} else {
+    //  $data['shipping_my_parcel_api_auth_url'] = $this->config->get('shipping_my_parcel_api_auth_url');
+    //}
 
     if (isset($this->request->post['shipping_my_parcel_api_client_key'])) {
       $data['shipping_my_parcel_api_client_key'] = $this->request->post['shipping_my_parcel_api_client_key'];
@@ -105,13 +106,19 @@ class ControllerExtensionShippingMyParcel extends Controller {
       $data['shipping_my_parcel_api_secret_key'] = $this->request->post['shipping_my_parcel_api_secret_key'];
     } else {
       $data['shipping_my_parcel_api_secret_key'] = $this->config->get('shipping_my_parcel_api_secret_key');
+    }		
+		
+		if (isset($this->request->post['shipping_my_parcel_mode'])) {
+      $data['shipping_my_parcel_mode'] = $this->request->post['shipping_my_parcel_mode'];
+    } else {
+      $data['shipping_my_parcel_mode'] = $this->config->get('shipping_my_parcel_mode');
     } 
 
-    if (isset($this->request->post['shipping_my_parcel_shipment'])) {
-      $data['shipping_my_parcel_shipment'] = $this->request->post['shipping_my_parcel_shipment'];
-    } else {
-      $data['shipping_my_parcel_shipment'] = $this->config->get('shipping_my_parcel_shipment');
-    } 
+    //if (isset($this->request->post['shipping_my_parcel_shipment'])) {
+    //  $data['shipping_my_parcel_shipment'] = $this->request->post['shipping_my_parcel_shipment'];
+    //} else {
+    //  $data['shipping_my_parcel_shipment'] = $this->config->get('shipping_my_parcel_shipment');
+    //} 
 
     if (isset($this->request->post['shipping_my_parcel_sort_order'])) {
       $data['shipping_my_parcel_sort_order'] = $this->request->post['shipping_my_parcel_sort_order'];

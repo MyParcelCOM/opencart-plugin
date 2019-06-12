@@ -18,7 +18,7 @@ $_['entry_api_auth_url'] = 'MyParcel Api Auth URL';
 $_['entry_api_client_key'] = 'MyParcel Api Client Key';
 $_['entry_api_secret_key'] = 'MyParcel Api Secret Key';
 $_['entry_api_shipment'] = 'Create New Shipment if one already exists';
-
+$_['entry_api_mode'] = 'Testmode';
  
 // Error
 $_['error_permission'] = 'Warning: You do not have permission to modify My Parcel rate shipping!';

@@ -491,8 +491,12 @@ class ModelSaleOrder extends Model {
 
 	public function myparcel_shipinfo_update($data){
 		$this->db->query("UPDATE " . DB_PREFIX . "myparcel_shipment SET `quantity` = '" . (int)$data['quantity'] . "', shipped_quantity = '" . (int)$data['shipped_quantity'] . "', shipped_weight = '" . (float)$data['shipped_weight'] . "', total_weight = '".(float)$data['total_weight']."', ship_id = '".$data['ship_id']."'  WHERE order_id = '" . (int)$data['order_id'] . "' AND `product_id` = '" .(int)$data['product_id']. "'");
-		$sid = $this->db->getLastId();
-		return $sid;
+		return true;
+	}
+
+	public function myparcel_orderinfo_update($data){
+		$this->db->query("UPDATE " . DB_PREFIX . "order_product SET shipped_product = '" . (int)$data['shipped_quantity'] . "' WHERE order_id = '" . (int)$data['order_id'] . "' AND `product_id` = '" .(int)$data['product_id']. "'");
+		return true;
 	}
 
 	public function get_myparcel_shipment($oid,$pid){
@@ -506,7 +510,7 @@ class ModelSaleOrder extends Model {
 	// }
 
 public function get_shipment($oid){
-	$query = $this->db->query("SELECT SUM(`quantity`) as quan,SUM(`shipped_quantity`) as squntity  FROM " . DB_PREFIX . "myparcel_shipment WHERE order_id = '" . (int)$oid . "'");
+	$query = $this->db->query("SELECT SUM(`quantity`) as quan,SUM(`shipped_quantity`) as squntity  FROM " . DB_PREFIX . "myparcel_shipment WHERE order_id = '" . (int)$oid . "' and ship_id != '0'");
 	if($query->rows){
 		return $query->row;
 	}		

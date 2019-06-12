@@ -75,19 +75,6 @@
               </select>
             </div>
           </div>
-
-          <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-api-url">{{ entry_api_url }}</label>
-            <div class="col-sm-10">
-              <input type="text" name="shipping_my_parcel_api_url" value="{{ shipping_my_parcel_api_url }}" placeholder="{{ entry_api_url }}" id="input-api-url" class="form-control" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-api-auth-url">{{ entry_api_auth_url }}</label>
-            <div class="col-sm-10">
-              <input type="text" name="shipping_my_parcel_api_auth_url" value="{{ shipping_my_parcel_api_auth_url }}" placeholder="{{ entry_api_auth_url }}" id="input-api-auth-url" class="form-control" />
-            </div>
-          </div>
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-api-client-key">{{ entry_api_client_key }}</label>
             <div class="col-sm-10">
@@ -100,22 +87,12 @@
               <input type="text" name="shipping_my_parcel_api_secret_key" value="{{ shipping_my_parcel_api_secret_key }}" placeholder="{{ entry_api_secret_key }}" id="input-api-secret-key" class="form-control" />
             </div>
           </div>
-
-          <div class="form-group">
-            <label class="col-sm-2 control-label" for="input-shipment">{{ entry_api_shipment }}</label>
+ 	<div class="form-group">
+            <label class="col-sm-2 control-label" for="input-shipment">{{ entry_api_mode }}</label>
             <div class="col-sm-10">
-            <select name="shipping_my_parcel_shipment" id="input-shipment" class="form-control">
-                {% if shipping_my_parcel_shipment %}
-                <option value="1" selected="selected">Yes</option>
-                <option value="0">No</option>
-                {% else %}
-                <option value="1">Yes</option>
-                <option value="0" selected="selected">No</option>
-                {% endif %}
-              </select>             
+		<input type="checkbox" name="shipping_my_parcel_mode" id="input-shipment" value="1" class="form-control" {% if shipping_my_parcel_mode %} checked="true"   {% endif %}>
             </div>
           </div>
-
           <div class="form-group">
             <label class="col-sm-2 control-label" for="input-sort-order">{{ entry_sort_order }}</label>
             <div class="col-sm-10">
