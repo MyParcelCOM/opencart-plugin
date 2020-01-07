@@ -1,0 +1,6 @@
+{
+    "require": {
+        "myparcelcom/api-sdk": "^1.2",
+        "php-http/guzzle6-adapter": "^1.1"
+    }
+}
