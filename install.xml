@@ -2,7 +2,7 @@
 <modification>
     <name>myparcel</name>
     <version>1.0.</version>
-    <author>By Fidel</author>
+    <author>By MyParcel</author>
     <link>https://www.myparcel.com/</link>
     <code>myparcel</code>
     <file path="admin/model/sale/order.php">

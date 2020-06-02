@@ -1,4 +1,14 @@
 <?php
+
+use MyParcelCom\ApiSdk\Authentication\ClientCredentials;
+use MyParcelCom\ApiSdk\MyParcelComApi;
+use MyParcelCom\ApiSdk\Resources\Address;
+use MyParcelCom\ApiSdk\Resources\Carrier;
+use MyParcelCom\ApiSdk\Resources\Interfaces\PhysicalPropertiesInterface;
+use MyParcelCom\ApiSdk\Resources\Shipment;
+use MyParcelCom\ApiSdk\Resources\ShipmentItem;
+use MyParcelCom\ApiSdk\Resources\Shop;
+
 $path = dirname(__FILE__);
 $path = str_replace("admin/controller/sale", "system/library/myparcel_vendor/vendor/autoload.php", $path);
 require_once($path);
@@ -30,8 +40,8 @@ class ControllerSaleMyParcel extends Controller
         if (!empty($apiUrl) && !empty($apiAuthUrl) && !empty($clientKey) && !empty($clientSecretKey)) {
             try {
 
-                $api           = new \MyParcelCom\ApiSdk\MyParcelComApi($apiUrl);
-                $authenticator = new \MyParcelCom\ApiSdk\Authentication\ClientCredentials(
+                $api           = new MyParcelComApi($apiUrl);
+                $authenticator = new ClientCredentials(
                     $clientKey,
                     $clientSecretKey,
                     $apiAuthUrl
@@ -74,7 +84,7 @@ class ControllerSaleMyParcel extends Controller
         $order_billing_email       = $order_info['email'];
         $country_code              = $order_info['shipping_iso_code_2'];
         $phone                     = $order_info['telephone'];
-        $recipient                 = new \MyParcelCom\ApiSdk\Resources\Address();
+        $recipient                 = new Address();
         if ('GB' == $country_code) {
             $recipient->setStreet1($order_shipping_address_1)->setStreetNumber(221)->setCity(
                 $order_shipping_city
@@ -101,7 +111,7 @@ class ControllerSaleMyParcel extends Controller
      */
     public function setItems($arr)
     {
-        $items1           = new \MyParcelCom\ApiSdk\Resources\ShipmentItem();
+        $items1           = new ShipmentItem();
         $currency         = $this->config->get('config_currency');
         $eu_countrycodes  = [
             'AT',
@@ -266,8 +276,8 @@ class ControllerSaleMyParcel extends Controller
             );
         }
 
-        $mpCarrier = new \MyParcelCom\ApiSdk\Resources\Carrier();
-        $mpShop    = new \MyParcelCom\ApiSdk\Resources\Shop();
+        $mpCarrier = new Carrier();
+        $mpShop    = new Shop();
         $orders    = $this->request->post['selected'];
         if (!empty($orders)) {
 
@@ -294,8 +304,8 @@ class ControllerSaleMyParcel extends Controller
                 }
                 $order_details               = "Order id:".$order_id;
                 $recipient                   = $this->setRecipient($order_id);
-                $shipment                    = new \MyParcelCom\ApiSdk\Resources\Shipment();
-                $physicalPropertiesInterface = \MyParcelCom\ApiSdk\Resources\Interfaces\PhysicalPropertiesInterface::WEIGHT_GRAM;
+                $shipment                    = new Shipment();
+                $physicalPropertiesInterface = PhysicalPropertiesInterface::WEIGHT_GRAM;
                 $shipment->setRecipientAddress($recipient)->setWeight(
                     $addItem['total_weight'] * 1000,
                     $physicalPropertiesInterface
