@@ -285,7 +285,6 @@ class ControllerSaleMyParcel extends Controller
             $module_my_parcel_shop_id   = $this->config->get('module_my_parcel_shop_id');
 
             if (empty($module_my_parcel_hook_mode) || ($module_my_parcel_shop_id != $module_my_parcel_hook_mode)) {
-
                 $this->registerMyParcelWebHook();
             }
 
@@ -398,9 +397,11 @@ class ControllerSaleMyParcel extends Controller
      */
     public function registerMyParcelWebHook()
     {
+        $testMode    = $this->config->get('module_my_parcel_mode');
+        $accessToken = $this->apiAuthentication(true);
+        $protocol    = !empty($testMode) ? HTTP_CATALOG : HTTPS_CATALOG;
+        $webHookUrl  = $protocol.'?route=common/home/customwebhook';
 
-        $accessToken   = $this->apiAuthentication(true);
-        $webHookUrl    = HTTP_CATALOG.'?route=common/home/customwebhook';
         $webHookName   = $this->getDefaultShopId().'-myparcelcom';
         $data          = [
             "data" =>
@@ -442,8 +443,7 @@ class ControllerSaleMyParcel extends Controller
         $dataString    = json_encode($data);
         $authorization = "Authorization: Bearer $accessToken";
 
-        $test_mode = $this->config->get('module_my_parcel_mode');
-        if (!empty($test_mode)) {
+        if (!empty($testMode)) {
             $url = $this->apiSandBoxHookUrl;
         } else {
             $url = $this->apiHookUrl;
@@ -452,7 +452,6 @@ class ControllerSaleMyParcel extends Controller
         $result          = $this->createWebHookCurlRequest($url, $dataString, $authorization);
         $webHookResponse = json_decode($result);
         if ($webHookResponse) {
-
             $this->model_sale_my_parcel->myparcelHookinfoUpdate($this->getDefaultShopId());
         }
 
@@ -558,8 +557,8 @@ class ControllerSaleMyParcel extends Controller
             .modal-content {
               top: 35px;
             }
-          </style><script>';    
-            $modal .= '$("#content #editDirectory #form-order-label input[name =\'selectorientation\']").on("click", function() {
+          </style><script>';
+            $modal    .= '$("#content #editDirectory #form-order-label input[name =\'selectorientation\']").on("click", function() {
                 var labelPostion = $(this).attr("value");
                 if(labelPostion==2) {
                     $("#form-order-label #orientation1").hide();
@@ -577,7 +576,7 @@ class ControllerSaleMyParcel extends Controller
     }
 
     /**
-     * @param  void
+     * @param void
      *
      * @return bool|string|array
      */
