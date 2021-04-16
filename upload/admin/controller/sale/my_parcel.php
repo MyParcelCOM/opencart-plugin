@@ -1,4 +1,6 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 use MyParcelCom\ApiSdk\Authentication\ClientCredentials;
 use MyParcelCom\ApiSdk\MyParcelComApi;
@@ -8,6 +10,8 @@ use MyParcelCom\ApiSdk\Resources\Interfaces\PhysicalPropertiesInterface;
 use MyParcelCom\ApiSdk\Resources\Shipment;
 use MyParcelCom\ApiSdk\Resources\ShipmentItem;
 use MyParcelCom\ApiSdk\Resources\Shop;
+use MyParcelCom\ApiSdk\Http\Exceptions\RequestException;
+use MyParcelCom\ApiSdk\Resources\Customs;
 
 $path = dirname(__FILE__);
 $path = str_replace("admin/controller/sale", "system/library/myparcel_vendor/vendor/autoload.php", $path);
@@ -113,7 +117,38 @@ class ControllerSaleMyParcel extends Controller
     {
         $items1           = new ShipmentItem();
         $currency         = $this->config->get('config_currency');
-        $eu_countrycodes  = [
+        $item_description = $arr['name'];
+        $item_sku         = $arr['sku'];
+        if ($item_sku == '') {
+            $item_sku = 'NA';
+        }
+        $item_weight   = $arr['weight'];
+        $item_value    = $arr['price'] * 100;
+        $item_quantity = $arr['squantity'];
+        if ($this->isEUCountry($arr['shipping_iso_code_2'])) {
+            $items1->setDescription($item_description)->setQuantity($item_quantity);
+        } else {
+            $items1->setSku($item_sku)
+                ->setDescription($item_description)
+                ->setQuantity($item_quantity)
+                ->setItemValue($item_value)
+                ->setCurrency($currency)
+                ->setOriginCountryCode($arr['shipping_iso_code_2'])
+                ->setHsCode('0000');
+
+        }
+
+        return $items1;
+    }
+
+    /**
+     * @param CountryCode $countryCode
+     *
+     * @return bool
+     **/
+    function isEUCountry($countryCode)
+    {
+        $euCountryCodes = [
             'AT',
             'BE',
             'BG',
@@ -143,24 +178,8 @@ class ControllerSaleMyParcel extends Controller
             'SI',
             'SK',
         ];
-        $item_description = $arr['name'];
-        $item_sku         = $arr['sku'];
-        if ($item_sku == '') {
-            $item_sku = 'NA';
-        }
-        $item_weight   = $arr['weight'];
-        $item_value    = $arr['price'] * 100;
-        $item_quantity = $arr['squantity'];
-        if (in_array($arr['shipping_iso_code_2'], $eu_countrycodes)) {
-            $items1->setDescription($item_description)->setQuantity($item_quantity);
 
-        } else {
-            $items1->setSku($item_sku)->setDescription($item_description)->setQuantity($item_quantity)->setItemValue(
-                $item_value
-            )->setCurrency($currency);
-        }
-
-        return $items1;
+        return (in_array($countryCode, $euCountryCodes));
     }
 
     /**
@@ -229,7 +248,7 @@ class ControllerSaleMyParcel extends Controller
                         'shipped_quantity' => $squantity,
                     ];
                     $this->model_sale_my_parcel->myparcelOrderinfoUpdate($update_order);
-                    $item_arr      = [
+                    $item_arr = [
                         'name'                => $item['name'],
                         'sku'                 => $product_info['sku'],
                         'weight'              => $product_info['weight'],
@@ -237,6 +256,7 @@ class ControllerSaleMyParcel extends Controller
                         'shipping_iso_code_2' => $order_info['shipping_iso_code_2'],
                         'squantity'           => $squantity,
                     ];
+
                     $items1        = $this->setItems($item_arr); // set Items
                     $shipAddItem[] = $items1;
                 }
@@ -312,12 +332,22 @@ class ControllerSaleMyParcel extends Controller
 
                 // set the selected shop
                 if (!empty($this->getSelectedShop())) {
-
                     $shipment->setShop($this->getSelectedShop());
                 }
 
+                if (!$this->isEUCountry($recipient->getCountryCode())) {
+                    $customs = new Customs();
+                    $customs->setContentType(Customs::CONTENT_TYPE_MERCHANDISE);
+                    $customs->setNonDelivery(Customs::NON_DELIVERY_RETURN);
+                    $customs->setIncoterm(Customs::INCOTERM_DDP);
+                    $customs->setInvoiceNumber('N/A');
+                    $shipment->setCustoms($customs);
+                }
+
                 $createdShipment = $api->createShipment($shipment);
+
                 $shipmentId      = $createdShipment->getId();
+
                 $insert          = [];
                 if ($shipmentId != '') {
                     $update = [
