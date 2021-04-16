@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>myparcel</name>
+    <version>1.0.</version>
+    <author>By MyParcel</author>
+    <link>https://www.myparcel.com/</link>
+    <code>myparcel</code>
+    <file path="admin/model/sale/order.php">
+        <operation>
+            <search>
+                <![CDATA[$sql = "SELECT o.order_id, CONCAT(o.firstname, ' ', o.lastname) AS customer, (SELECT os.name FROM " . DB_PREFIX . "order_status os WHERE os.order_status_id = o.order_status_id AND os.language_id = '" . (int)$this->config->get('config_language_id') . "') AS order_status, o.shipping_code, o.total, o.currency_code, o.currency_value, o.date_added, o.date_modified FROM `" . DB_PREFIX . "order` o";]]></search>
+            <add position="replace">
+                <![CDATA[$sql = "SELECT o.order_id, CONCAT(o.firstname, ' ', o.lastname) AS customer, (SELECT os.name FROM " . DB_PREFIX . "order_status os WHERE os.order_status_id = o.order_status_id AND os.language_id = '" . (int)$this->config->get('config_language_id') . "') AS order_status, o.shipping_code, o.shipping_method, o.total, o.currency_code, o.currency_value, o.date_added, o.date_modified FROM `" . DB_PREFIX . "order` o";]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[public function getTotalEmailsByProductsOrdered($products) {]]></search>
+            <add position="before"><![CDATA[
+                public function myparcel_shipment($data){
+                    $this->db->query("INSERT IGNORE INTO " . DB_PREFIX . "myparcel_shipment SET order_id = '" . (int)$data['order_id'] . "', `product_id` = '" .(int)$data['product_id']. "', `quantity` = '" . (int)$data['quantity'] . "', shipped_quantity = '" . (int)$data['shipped_quantity'] . "', shipped_weight = '" . (float)$data['shipped_weight'] . "', total_weight = '".(float)$data['total_weight']."', ship_id = '".$data['ship_id']."'");
+                    $sid = $this->db->getLastId();
+                    return $sid;
+                }
+                public function myparcel_shipment_update($data){
+                    $this->db->query("UPDATE " . DB_PREFIX . "myparcel_shipment SET ship_id = '".$data['ship_id']."' WHERE order_id = '" . (int)$data['order_id'] . "'");
+                    $sid = $this->db->getLastId();
+                    return $sid;
+                }
+
+                public function myparcel_shipinfo_update($data){
+                    $this->db->query("UPDATE " . DB_PREFIX . "myparcel_shipment SET `quantity` = '" . (int)$data['quantity'] . "', shipped_quantity = '" . (int)$data['shipped_quantity'] . "', shipped_weight = '" . (float)$data['shipped_weight'] . "', total_weight = '".(float)$data['total_weight']."', ship_id = '".$data['ship_id']."'  WHERE order_id = '" . (int)$data['order_id'] . "' AND `product_id` = '" .(int)$data['product_id']. "'");
+                    return true;
+                }
+
+                public function myparcel_orderinfo_update($data){
+                    $this->db->query("UPDATE " . DB_PREFIX . "order_product SET shipped_product = '" . (int)$data['shipped_quantity'] . "' WHERE order_id = '" . (int)$data['order_id'] . "' AND `product_id` = '" .(int)$data['product_id']. "'");
+                    return true;
+                }
+
+                public function get_myparcel_shipment($oid,$pid){
+                $query = $this->db->query("SELECT SUM(`shipped_quantity`) as squntity, ship_id FROM " . DB_PREFIX . "myparcel_shipment WHERE order_id = '" . (int)$oid . "' and product_id = '".$pid."'");
+                    return $query->row;
+                }
+
+                public function get_shipment($oid){
+                $query = $this->db->query("SELECT SUM(`quantity`) as quan,SUM(`shipped_quantity`) as squntity  FROM " . DB_PREFIX . "myparcel_shipment WHERE order_id = '" . (int)$oid . "' and ship_id != '0'");
+                if($query->rows){
+                    return $query->row;
+                }       
+                }
+
+                public function get_shipment_order_quan($oid){
+                $query = $this->db->query("SELECT SUM(`quantity`) as quan FROM " . DB_PREFIX . "order_product WHERE order_id = '" . (int)$oid . "'");
+                if($query->rows){
+                    return $query->row;
+                }       
+                }
+
+
+            public function myparcel_shipment_history($data){
+                    $this->db->query("INSERT IGNORE INTO " . DB_PREFIX . "myparcel_shipment_histroy SET order_id = '" . (int)$data['order_id'] . "',weight = '".(float)$data['weight']."', ship_id = '".$data['ship_id']."'");
+                    $sid = $this->db->getLastId();
+                    return $sid;
+                }
+            ]]></add>
+        </operation>
+
+    </file>
+    <file path="admin/controller/sale/order.php">
+
+        <operation>
+            <search><![CDATA[class ControllerSaleOrder extends Controller { ]]></search>
+            <add position="before"><![CDATA[$path = DIR_SYSTEM."library/myparcel_vendor/vendor/autoload.php";
+                require_once($path);
+                use \MyParcelCom\ApiSdk\Resources\File;
+                use \MyParcelCom\ApiSdk\Resources\Interfaces\FileInterface;
+                use \MyParcelCom\ApiSdk\LabelCombinerInterface;
+                use MyParcelCom\ApiSdk\LabelCombiner;
+                define('MYPARCEL_SHIPMENT_REGISTERED' ,'shipment-registered');
+                ]]>
+
+            </add>
+        </operation>
+
+        <operation>
+            <search><![CDATA['shipping_code' => $result['shipping_code'],]]></search>
+            <add position="after"><![CDATA['shipping_method' => $result['shipping_method'],
+            'ship_status' => $mp_status,
+            'shipment_status' => $mp_shipment_status,
+            'shipment_label' => $mp_shipping_label_1,]]></add>
+        </operation>
+        <operation>
+            <search>
+                <![CDATA[$data['delete'] = str_replace('&amp;', '&', $this->url->link('sale/order/delete', 'user_token=' . $this->session->data['user_token'] . $url, true));]]></search>
+            <add position="after"><![CDATA[$data['export'] = $this->url->link('sale/my_parcel/export', 'user_token=' . $this->session->data['user_token'], true);
+
+            $data['printlabelshipment'] = $this->url->link('sale/my_parcel/printlabelshipment', 'user_token=' . $this->session->data['user_token'], true);
+              ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA['quantity'   => $product['quantity'],]]></search>
+            <add position="after"><![CDATA[
+            'squantity'   => $product['shipped_product'],]]></add>
+        </operation>
+        <operation>
+            <search index="0"><![CDATA[foreach ($results as $result) {]]></search>
+            <add position="after"><![CDATA[
+            $this->load->model('sale/my_parcel');
+            $mp_status = "";
+            $mp_shipment_status = "";
+            $mp_shipment_label = "";
+            $mp_shipping_info = $this->model_sale_my_parcel->getShipment($result['order_id']);
+            $mp_shipment_label = $mp_shipping_info['shipment_label'];
+            $mp_shipment_status = $mp_shipping_info['shipment_status'];
+            $mp_shipping_label_1 = $this->getShipmentFiles($mp_shipping_info['ship_id']);
+
+            $order_quan_info = $this->model_sale_order->get_shipment_order_quan($result['order_id']);
+            if($mp_shipping_info['squntity']>=$order_quan_info['quan']){
+                $mp_status = 'Shipped';
+            }
+            else{
+            if($mp_shipping_info['squntity']>0){
+            $mp_status = 'Partially Shipped';
+            }       
+            }]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[protected function getList()]]></search>
+            <add position="before"><![CDATA[ 
+            /**
+             * @param $ship_id,$order_id
+             *
+             * @throws Exception
+             */
+            public function getShipmentFiles($ship_id) { 
+
+                $webHookData = $this->model_sale_my_parcel->get_webhook_data($ship_id);
+                if (!empty($webHookData)) {
+                    $getShipmentContent = json_decode($webHookData, true);
+                    $getShipmentData    = $getShipmentContent['included'];
+                    $trackingkey = $ship_id;
+                    $shipment       = new  \MyParcelCom\ApiSdk\Resources\Shipment();
+                    $api            = $this->apiAuthentication();
+                    $shipment       = $api->getShipment($trackingkey);
+                    $getRegisterAt  = $shipment->getRegisterAt();
+                    $shipmentStatus = $shipment->getShipmentStatus();
+                    $status         = $shipmentStatus->getStatus();
+
+                if(!isset($getShipmentData[1]['attributes']['tracking_code'])){ // checking tracking code
+                      
+                  if(isset($getShipmentData[0]['attributes']['code']) && $getShipmentData[0]['attributes']['code'] =='shipment-concept') {         
+                      if(empty($getRegisterAt)){
+                        try {
+                          $shipment->setRegisterAt(new \DateTime());
+                        $updateShipmentResp = $api->updateShipment($shipment);
+                        } catch (Exception $e) {                           
+                                   
+                            }
+                      } 
+                     }
+                      return;
+                    }  
+                }  
+                
+                if (!empty($getShipmentData[1]['attributes']['tracking_code'])) {              
+                   
+                  if (!empty($getRegisterAt) && ($status->getCode() === MYPARCEL_SHIPMENT_REGISTERED)) {
+
+                        $file     = new File();
+                        $shipment = $api->getShipment($trackingkey);
+                        $labels   = $shipment->getFiles(File::DOCUMENT_TYPE_LABEL);
+                        if (!empty($labels)) {
+                            foreach ($labels as $label) {
+                                $label = $label->getBase64Data('application/pdf');
+                                $label_ec=  '<a class="button download-label" download="label.pdf" href="data:application/octet-stream;base64,'.$label.'"><i class="fa fa-file-pdf-o" style="font-size:20px;color:red"></i></a>';
+                                ?>
+                                <?php
+                            }
+                            ?>
+                          <script type="text/javascript">
+                            jQuery(document).ready(function ($) {
+                              let a = $('.download-label')
+                              a.click()
+                            })
+                          </script>
+                        <?php }
+                        return $label_ec;
+                  } 
+              }        
+            }
+    
+          /**
+           * @param $post
+           *
+           * @return mixed
+           */
+        public function ShipMentLabel(){
+
+          $api    = $this->apiAuthentication();
+          if($api){
+            $this->load->model('sale/my_parcel');
+              $selectOrientation = intval($_POST['radio']);
+              $orderIds          = $_POST['orderids'];
+              $ordersA =  explode(',', $orderIds);
+              $labelPrinter      = intval($_POST['selectorientation']);
+              $labelCombiner     = new LabelCombiner();
+              $shipments         = [];
+              $shipment      = new  \MyParcelCom\ApiSdk\Resources\Shipment();
+              $file     =    new File();
+              foreach ($ordersA as $orderId) {
+
+                $mp_shipping_info = $this->model_sale_my_parcel->getShipment($orderId);
+              
+                $getShipmentKey  = $mp_shipping_info['ship_id'];
+                $shipment_status = $mp_shipping_info['shipment_status'];
+                  if (!empty($getShipmentKey) && $shipment_status==MYPARCEL_SHIPMENT_REGISTERED) {
+                    $shipments[] = $getShipmentKey;
+
+                  }
+              }
+              $files = [];
+              
+              if (!empty($shipments)) {
+                  foreach ($shipments as $trackingkey) {
+                    $shipment       = $api->getShipment($trackingkey);
+                    $files = array_merge(
+                      $files,
+                      $shipment->getFiles(File::DOCUMENT_TYPE_LABEL)
+                  ); 
+                  }
+
+                $combinedFile = $labelCombiner->combineLabels(
+                    $files,
+                    $this->labelPrinter($labelPrinter),
+                      $this->getOrientation($selectOrientation),
+                    20
+                );
+
+                $pdf_encode = $combinedFile->getBase64Data('application/pdf');
+                $decoded = base64_decode ($pdf_encode);
+                $file = 'label.pdf';
+                file_put_contents($file, $decoded);
+                if (file_exists($file)) {
+                    header('Content-Description: File Transfer');
+                    header('Content-Type: application/pdf');
+                    header('Content-Disposition: attachment; filename="'.basename($file).'"');
+                    header('Expires: 0');
+                    header('Cache-Control: must-revalidate');
+                    header('Pragma: public');
+                    header('Content-Length: ' . filesize($file));
+                    readfile($file);
+                    exit;
+                }
+
+              }else{
+                  // no shipment files
+                  $this->session->data['success'] = 'Files are not avaliable.';
+                $this->response->redirect($this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . $url, true));
+              }
+            }
+            else{ // for api
+            $this->session->data['success'] = 'Incorrect client id or secret.';
+            $this->response->redirect($this->url->link('sale/order', 'user_token=' . $this->session->data['user_token'] . $url, true));
+          }
+        }
+          /**
+           * @param $selectOrientation
+           *
+           * @return mixed
+           */
+          public function getOrientation($selectOrientation)
+          {
+              switch ($selectOrientation) {
+                  case 1:
+                      return LabelCombinerInterface::LOCATION_TOP_LEFT;
+                      break;
+                  case 2:
+                      return LabelCombinerInterface::LOCATION_TOP_RIGHT;
+                      break;
+                  case 3:
+                      return LabelCombinerInterface::LOCATION_BOTTOM_LEFT;
+                      break;
+                  default:
+                      return LabelCombinerInterface::LOCATION_BOTTOM_RIGHT;
+                      break;
+              }
+          }
+
+          /**
+           * @param $labelPrinter
+           *
+           * @return string
+           */
+          public function labelPrinter($labelPrinter)
+          {
+              if (!empty($labelPrinter) && ($labelPrinter === 1)) {
+                  return LabelCombinerInterface::PAGE_SIZE_A4;
+              } else {
+                  return LabelCombinerInterface::PAGE_SIZE_A6;
+              }
+          }
+
+        ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[public function shipping() {]]></search>
+            <add position="before"><![CDATA[
+                  public function apiAuthentication()
+                  {
+                      $test_mode       = $this->config->get('module_my_parcel_mode');
+                      $clientKey       = $this->config->get('module_my_parcel_api_client_key');
+                      $clientSecretKey = $this->config->get('module_my_parcel_api_secret_key');
+                      if (!empty($test_mode)) {
+                          $apiUrl     = "https://sandbox-api.myparcel.com"; // Sandbox api URL
+                          $apiAuthUrl = "https://sandbox-auth.myparcel.com"; // Sandbox api Auth URL
+                      } else {
+                          $apiUrl     = "https://api.myparcel.com"; // Production api URL
+                          $apiAuthUrl = "https://auth.myparcel.com"; // Production api Auth URL
+                      }
+                      if (!empty($apiUrl) && !empty($apiAuthUrl) && !empty($clientKey) && !empty($clientSecretKey)) {
+                          try {
+                              $api           = new \MyParcelCom\ApiSdk\MyParcelComApi($apiUrl);
+                              $authenticator = new \MyParcelCom\ApiSdk\Authentication\ClientCredentials($clientKey, $clientSecretKey, $apiAuthUrl);
+                              $authenticator->getAuthorizationHeader(true);
+                              $apiConn       = $api->authenticate($authenticator);
+                              $apiConn->code = "Success";
+                              return $apiConn;
+                          }
+                          catch (Exception $e) {
+                              $msg       = new ArrayObject();
+                              $msg->code = "error";
+                              $msg->msg  = 'Message: ' . $e->getMessage();
+                              return false;
+                          }
+                          
+                      }
+                  }
+            ]]></add>
+        </operation>
+    </file>
+    <file path="admin/view/template/sale/order_list.twig">
+        <operation>
+            <search><![CDATA[<td class="text-right">{{ column_action }}</td>]]></search>
+            <add position="before"><![CDATA[<td class="text-left">Shipping Method</td>
+            <td class="text-left">Shipped Status</td>
+            <td class="text-left">Shipment Status</td>
+            <td class="text-left">Shipped label</td>
+            
+            ]]>
+
+            </add>
+        </operation>
+        <operation>
+            <search><![CDATA[ <td class="text-center" colspan="8">{{ text_no_results }}</td>]]></search>
+            <add position="replace"><![CDATA[ <td class="text-center" colspan="12">{{ text_no_results }}</td>]]>
+            </add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[<td class="text-left">{{ order.date_modified }}</td>]]></search>
+            <add position="after"><![CDATA[
+            <td class="text-left">{{ order.shipping_method }}</td>
+            <td class="text-left">{% if order.ship_status %} {{ order.ship_status }} {% endif %}</td>
+            <td class="text-left">{% if order.shipment_status %} {{ order.shipment_status }} {% endif %}</td>
+            <td class="text-left">{% if order.shipment_label %} {{ order.shipment_label }} {% endif %}</td>
+
+            ]]></add>
+
+        </operation>
+        <operation>
+            <search>
+                <![CDATA[<a href="{{ add }}" data-toggle="tooltip" title="{{ button_add }}" class="btn btn-primary"><i class="fa fa-plus"></i></a>]]></search>
+            <add position="before"><![CDATA[
+            <button type="submit" id="mp_export" form="form-order" formaction="{{ export }}" data-toggle="tooltip" title="Export to Myparcel" class="btn btn-info"><i class="fa fa-download"></i></button>
+
+            <button type="button" id="mp_print_label_shipment" form="form-order" formaction="{{ printlabelshipment }}" data-target="#editDirectory" data-toggle="modal" title="print label shipment" class="btn btn-info"><i class="fa fa-file-pdf-o "></i></button>
+
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search index="1"><![CDATA[<div class="container-fluid">]]></search>
+            <add position="before"><![CDATA[
+                <div class="modal fade bd-example-modal-md" id="editDirectory" tabindex="-1" role="dialog" aria-labelledby="editDirectoryModalLabel" aria-hidden="true" data-backdrop="false">
+                  <div class="modal-dialog modal-md" role="document">
+                    <div class="modal-content">
+
+                    </div>
+                  </div>
+                </div>
+
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[$('#button-invoice').prop('disabled', false);]]></search>
+            <add position="after"><![CDATA[ 
+            $('#mp_export').prop('disabled', false);
+            $('#mp_print_label_shipment').prop('disabled', false);
+            ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[$('#button-shipping, #button-invoice').prop('disabled', true);]]></search>
+            <add position="before"><![CDATA[ 
+           $('#mp_export').prop('disabled', true);
+           $('#mp_print_label_shipment').prop('disabled', true);
+            ]]></add>
+        </operation>
+
+        <operation>
+            <search><![CDATA[$('#button-shipping, #button-invoice').on('click', function(e) {]]></search>
+            <add position="replace">
+                <![CDATA[$('#button-shipping, #button-invoice, #mp_export').on('click', function(e) { ]]></add>
+        </operation>
+
+        <operation>
+            <search index="1"><![CDATA[$('#button-shipping, #button-invoice').prop('disabled', true);]]></search>
+            <add position="aftre"><![CDATA[$('#mp_print_label_shipment').on('click', function() {
+                var orders_no = [];
+                $.each($("#form-order input[type='checkbox']:checked"), function(){
+                    orders_no.push($(this).val());
+                });
+
+                var url = $(this).attr('formaction');
+                  $.ajax({
+                          type: 'POST',
+                          url: url,
+                          data: { orders: orders_no} ,
+                          success: function(data) {
+                           $(".modal-content").empty().html(data);
+                        },
+                  });
+            });  
+            ]]>
+            </add>
+        </operation>
+    </file>
+    <file path="admin/view/template/sale/order_form.twig">
+        <operation>
+            <search><![CDATA[<td class="text-left">{{ column_model }}</td>]]></search>
+            <add position="after"><![CDATA[
+             {% if shipping_code == 'my_parcel.my_parcel' %}
+                    <td class="text-right">Shipped Quantity</td>
+             {% endif %}
+             ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[<td class="text-left">{{ order_product.model }}</td>]]></search>
+            <add position="after"><![CDATA[
+             {% if shipping_code == 'my_parcel.my_parcel' %}
+                      <td class="text-left"><input type="text" name="product[{{ product_row }}][squantity]" value="{{ order_product.squantity }}"/>
+                      <input type="hidden" name="product[{{ product_row }}][squantity1]" value="{{ order_product.squantity }}"/>
+                      </td>
+             {% endif %}
+             ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[html += '  <td class="text-left">' + product['model'] + '</td>';]]></search>
+            <add position="after"><![CDATA[
+            {% if shipping_code == 'my_parcel.my_parcel' %}
+            html += '  <td class="text-left"><div class="input-group btn-block" style="max-width: 200px;"><input type="text" name="product[' + i + '][squantity]" value="' + product['squantity'] + '" class="form-control" /><span class="input-group-btn"><button type="button" data-toggle="tooltip" title="{{ button_refresh }}" data-loading-text="{{ text_loading }}" class="btn btn-primary"><i class="fa fa-refresh"></i></button></span></div><input type="hidden" name="product[' + i + '][squantity1]" value="' + product['squantity'] + '" class="form-control" /></td>';
+            {% endif %}
+             ]]></add>
+        </operation>
+    </file>
+    <file path="catalog/controller/api/cart.php">
+        <operation>
+            <search><![CDATA[$this->cart->add($product['product_id'], $product['quantity'], $option);]]></search>
+            <add position="after"><![CDATA[
+             $this->cart->add_shipped_product($this->session->data['api_id'],$product['product_id'],$product['squantity'],$product['squantity']);
+             ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA['quantity'   => $product['quantity'],]]></search>
+            <add position="after"><![CDATA[
+            'squantity'  => $product['total_squantity'],
+             ]]></add>
+        </operation>
+    </file>
+    <file path="catalog/controller/api/order.php">
+        <operation>
+            <search index="1"><![CDATA['quantity'   => $product['quantity'],]]></search>
+            <add position="after"><![CDATA[
+            'squantity'  => $product['squantity'],
+             ]]></add>
+        </operation>
+    </file>
+    <file path="catalog/model/checkout/order.php">
+        <operation>
+            <search index="1"><![CDATA[$this->db->query("INSERT INTO " . DB_PREFIX . "order_product SET order_id = '" . (int)$order_id . "', product_id = '" . (int)$product['product_id'] . "', name = '" . $this->db->escape($product['name']) . "', model = '" . $this->db->escape($product['model']) . "', quantity = '" . (int)$product['quantity'] . "', price = '" . (float)$product['price'] . "', total = '" . (float)$product['total'] . "', tax = '" . (float)$product['tax'] . "', reward = '" . (int)$product['reward'] . "'");
+]]></search>
+            <add position="replace"><![CDATA[
+            $this->db->query("INSERT INTO " . DB_PREFIX . "order_product SET order_id = '" . (int)$order_id . "', product_id = '" . (int)$product['product_id'] . "', name = '" . $this->db->escape($product['name']) . "', model = '" . $this->db->escape($product['model']) . "', quantity = '" . (int)$product['quantity'] . "', shipped_product = '" . (int)$product['squantity'] . "', price = '" . (float)$product['price'] . "', total = '" . (float)$product['total'] . "', tax = '" . (float)$product['tax'] . "', reward = '" . (int)$product['reward'] . "'");
+
+             ]]></add>
+        </operation>
+    </file>
+    <file path="system/library/cart/cart.php">
+        <operation>
+            <search>
+                <![CDATA[public function add($product_id, $quantity = 1, $option = array(), $recurring_id = 0) {]]></search>
+            <add position="before"><![CDATA[
+            public function add_shipped_product($api_id,$product_id,$sq,$squantity)
+                {
+                $this->db->query("UPDATE " . DB_PREFIX . "cart SET shipped_product = " . (int)$sq . ",total_shipped_product = " . (int)$squantity . " WHERE api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "' AND product_id = '" . (int)$product_id . "'");
+                }
+            ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA['quantity'        => $cart['quantity'],]]></search>
+            <add position="after"><![CDATA[
+            'squantity'       => $cart['shipped_product'], 
+            'total_squantity' => $cart['total_shipped_product'],]]></add>
+        </operation>
+    </file>
+
+    <file path="catalog/controller/common/home.php">
+        <operation>
+            <search><![CDATA[public function index() {]]></search>
+            <add position="before"><![CDATA[
+              public  function customwebhook(){
+                  $json = file_get_contents("php://input");//Get all post data
+                  $decode = json_decode($json);
+                  $data= $decode->data;
+
+                  $id = $data->relationships->shipment->data->id;
+                  $status = $decode->included[0]->attributes->code;
+
+                  $this->db->query("UPDATE " . DB_PREFIX . "myparcel_shipment SET shipment_status = '".$status."', shipment_label = '',webhook_response = '".$json."' WHERE ship_id ='".$id."' ");
+                  echo "updated";
+                  }
+             ]]></add>
+        </operation>
+    </file>
+</modification>
