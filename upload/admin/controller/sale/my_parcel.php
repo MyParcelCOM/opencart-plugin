@@ -19,8 +19,8 @@ require_once($path);
 
 class ControllerSaleMyParcel extends Controller
 {
-    private $token_url = 'https://sandbox-auth.myparcel.com/access-token';
-    private $apiSandBoxHookUrl = 'https://sandbox-api.myparcel.com/hooks';
+    private $token_url = 'https://auth.sandbox.myparcel.com/access-token';
+    private $apiSandBoxHookUrl = 'https://api.sandbox.myparcel.com/hooks';
     private $apiHookUrl = 'https://api.myparcel.com/hooks';
 
     /**
@@ -34,8 +34,8 @@ class ControllerSaleMyParcel extends Controller
         $clientKey       = $this->config->get('module_my_parcel_api_client_key');
         $clientSecretKey = $this->config->get('module_my_parcel_api_secret_key');
         if (!empty($test_mode)) {
-            $apiUrl     = "https://sandbox-api.myparcel.com"; // Sandbox api URL
-            $apiAuthUrl = "https://sandbox-auth.myparcel.com"; // Sandbox api Auth URL
+            $apiUrl     = "https://api.sandbox.myparcel.com"; // Sandbox api URL
+            $apiAuthUrl = "https://auth.sandbox.myparcel.com"; // Sandbox api Auth URL
         } else {
             $apiUrl     = "https://api.myparcel.com"; // Production api URL
             $apiAuthUrl = "https://auth.myparcel.com"; // Production api Auth URL
