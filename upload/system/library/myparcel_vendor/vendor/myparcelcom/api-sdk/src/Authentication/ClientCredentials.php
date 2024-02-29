@@ -47,7 +47,7 @@ class ClientCredentials implements AuthenticatorInterface
     public function __construct(
         $clientId,
         $clientSecret,
-        $authUri = 'https://sandbox-auth.myparcel.com',
+        $authUri = 'https://auth.sandbox.myparcel.com',
         CacheInterface $cache = null,
         HttpClient $httpClient = null
     ) {
