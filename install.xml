@@ -3,7 +3,7 @@
     <name>myparcel</name>
     <version>1.0.</version>
     <author>By MyParcel</author>
-    <link>https://www.myparcel.com/</link>
+    <link>https://solutions.myparcel.com/</link>
     <code>myparcel</code>
     <file path="admin/model/sale/order.php">
         <operation>
@@ -45,14 +45,14 @@
                 $query = $this->db->query("SELECT SUM(`quantity`) as quan,SUM(`shipped_quantity`) as squntity  FROM " . DB_PREFIX . "myparcel_shipment WHERE order_id = '" . (int)$oid . "' and ship_id != '0'");
                 if($query->rows){
                     return $query->row;
-                }       
+                }
                 }
 
                 public function get_shipment_order_quan($oid){
                 $query = $this->db->query("SELECT SUM(`quantity`) as quan FROM " . DB_PREFIX . "order_product WHERE order_id = '" . (int)$oid . "'");
                 if($query->rows){
                     return $query->row;
-                }       
+                }
                 }
 
 
@@ -120,19 +120,19 @@
             else{
             if($mp_shipping_info['squntity']>0){
             $mp_status = 'Partially Shipped';
-            }       
+            }
             }]]></add>
         </operation>
 
         <operation>
             <search><![CDATA[protected function getList()]]></search>
-            <add position="before"><![CDATA[ 
+            <add position="before"><![CDATA[
             /**
              * @param $ship_id,$order_id
              *
              * @throws Exception
              */
-            public function getShipmentFiles($ship_id) { 
+            public function getShipmentFiles($ship_id) {
 
                 $webHookData = $this->model_sale_my_parcel->get_webhook_data($ship_id);
                 if (!empty($webHookData)) {
@@ -147,23 +147,23 @@
                     $status         = $shipmentStatus->getStatus();
 
                 if(!isset($getShipmentData[1]['attributes']['tracking_code'])){ // checking tracking code
-                      
-                  if(isset($getShipmentData[0]['attributes']['code']) && $getShipmentData[0]['attributes']['code'] =='shipment-concept') {         
+
+                  if(isset($getShipmentData[0]['attributes']['code']) && $getShipmentData[0]['attributes']['code'] =='shipment-concept') {
                       if(empty($getRegisterAt)){
                         try {
                           $shipment->setRegisterAt(new \DateTime());
                         $updateShipmentResp = $api->updateShipment($shipment);
-                        } catch (Exception $e) {                           
-                                   
+                        } catch (Exception $e) {
+
                             }
-                      } 
+                      }
                      }
                       return;
-                    }  
-                }  
-                
-                if (!empty($getShipmentData[1]['attributes']['tracking_code'])) {              
-                   
+                    }
+                }
+
+                if (!empty($getShipmentData[1]['attributes']['tracking_code'])) {
+
                   if (!empty($getRegisterAt) && ($status->getCode() === MYPARCEL_SHIPMENT_REGISTERED)) {
 
                         $file     = new File();
@@ -185,10 +185,10 @@
                           </script>
                         <?php }
                         return $label_ec;
-                  } 
-              }        
+                  }
+              }
             }
-    
+
           /**
            * @param $post
            *
@@ -210,7 +210,7 @@
               foreach ($ordersA as $orderId) {
 
                 $mp_shipping_info = $this->model_sale_my_parcel->getShipment($orderId);
-              
+
                 $getShipmentKey  = $mp_shipping_info['ship_id'];
                 $shipment_status = $mp_shipping_info['shipment_status'];
                   if (!empty($getShipmentKey) && $shipment_status==MYPARCEL_SHIPMENT_REGISTERED) {
@@ -219,14 +219,14 @@
                   }
               }
               $files = [];
-              
+
               if (!empty($shipments)) {
                   foreach ($shipments as $trackingkey) {
                     $shipment       = $api->getShipment($trackingkey);
                     $files = array_merge(
                       $files,
                       $shipment->getFiles(File::DOCUMENT_TYPE_LABEL)
-                  ); 
+                  );
                   }
 
                 $combinedFile = $labelCombiner->combineLabels(
@@ -332,7 +332,7 @@
                               $msg->msg  = 'Message: ' . $e->getMessage();
                               return false;
                           }
-                          
+
                       }
                   }
             ]]></add>
@@ -345,7 +345,7 @@
             <td class="text-left">Shipped Status</td>
             <td class="text-left">Shipment Status</td>
             <td class="text-left">Shipped label</td>
-            
+
             ]]>
 
             </add>
@@ -394,14 +394,14 @@
 
         <operation>
             <search><![CDATA[$('#button-invoice').prop('disabled', false);]]></search>
-            <add position="after"><![CDATA[ 
+            <add position="after"><![CDATA[
             $('#mp_export').prop('disabled', false);
             $('#mp_print_label_shipment').prop('disabled', false);
             ]]></add>
         </operation>
         <operation>
             <search><![CDATA[$('#button-shipping, #button-invoice').prop('disabled', true);]]></search>
-            <add position="before"><![CDATA[ 
+            <add position="before"><![CDATA[
            $('#mp_export').prop('disabled', true);
            $('#mp_print_label_shipment').prop('disabled', true);
             ]]></add>
@@ -430,7 +430,7 @@
                            $(".modal-content").empty().html(data);
                         },
                   });
-            });  
+            });
             ]]>
             </add>
         </operation>
@@ -509,7 +509,7 @@
         <operation>
             <search><![CDATA['quantity'        => $cart['quantity'],]]></search>
             <add position="after"><![CDATA[
-            'squantity'       => $cart['shipped_product'], 
+            'squantity'       => $cart['shipped_product'],
             'total_squantity' => $cart['total_shipped_product'],]]></add>
         </operation>
     </file>
